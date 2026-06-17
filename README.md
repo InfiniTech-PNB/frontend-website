@@ -1,10 +1,7 @@
-## 🔗 Related Repositories
+# KavachAI Frontend
 
-- **Backend**: [InfiniTech-PNB/backend](https://github.com/InfiniTech-PNB/backend)
-- **Crypto Scanner**: [InfiniTech-PNB/crypto-scanner](https://github.com/InfiniTech-PNB/crypto-service)
-- **PQC Prediction ML**: [InfiniTech-PNB/pqc-prediction-ml](https://github.com/InfiniTech-PNB/pqc-score-predictor)
-
-# 🛡️ KavachAI Frontend – Quantum-Safe Infrastructure Dashboard
+> **Quantum-Safe Infrastructure Dashboard**
+> Built for PNB Hackathon 2026 by **InfiniTech**
 
 This frontend application provides a powerful and interactive dashboard for visualizing cryptographic vulnerabilities and managing the transition to **Post-Quantum Cryptography (PQC)**.
 
@@ -12,140 +9,169 @@ It enables security administrators to monitor infrastructure **Quantum Readiness
 
 ---
 
+## 📌 Table of Contents
+
+- [Features](#-features)
+- [Architecture & Flow](#-architecture--flow)
+- [Tech Stack](#️-tech-stack)
+- [Project Structure](#-project-structure)
+- [Local Setup (First Time)](#-local-setup-first-time)
+- [Running the Application](#-running-the-application)
+- [Application Modules & Routes](#-application-modules--routes)
+- [Team](#-team)
+
+---
+
 ## 🚀 Features
 
-- **Infrastructure Mapping**: Discover domains, subdomains, IPs, and services interactively.
-- **PQC Risk Scoring**: ML-based scoring with CIA (Confidentiality, Integrity, Availability) metrics.
-- **Cryptographic Inventory (CBOM)**: Detailed TLS versions, cipher suites, and PQC algorithms.
-- **AI-Powered Roadmaps**: Migration guidance with recommendations (ML-KEM, CRYSTALS-Dilithium).
-- **Interactive AI Chatbot**: Query scan results and compliance insights.
-- **Secure Authentication Flow**: JWT + OTP-based login integration.
-- **Data Visualization**: Risk distribution and trends using charts.
+| Feature | Description |
+|---|---|
+| **Infrastructure Mapping** | Discover domains, subdomains, IPs, and services interactively. |
+| **PQC Risk Scoring** | ML-based scoring with CIA (Confidentiality, Integrity, Availability) metrics. |
+| **Cryptographic Inventory (CBOM)** | Detailed TLS versions, cipher suites, and PQC algorithms. |
+| **AI-Powered Roadmaps** | Migration guidance with recommendations (ML-KEM, CRYSTALS-Dilithium). |
+| **Interactive AI Chatbot** | Query scan results and compliance insights. |
+| **Secure Authentication Flow** | JWT + OTP-based login integration. |
+| **Data Visualization** | Risk distribution and trends using charts. |
 
 ---
 
-## 🔄 Execution Flow / How it Works
+## 🔄 Architecture & Flow
 
-1. **Authenticate**  
-   User logs in with email and OTP verification (2FA).
+### Execution Flow / How it Works
 
-2. **Discover**  
-   User inputs a domain → system maps assets (subdomains, IPs, services).
-
-3. **Configure**  
-   User sets business context (criticality, SLA).
-
-4. **Audit**  
-   Run:
-   - Soft Scan  
-   - Deep Scan  
-
-5. **Analyze**  
-   - View PQC readiness score  
-   - Inspect cryptographic inventory  
-   - Download CBOM report  
-
-6. **Remediate**  
-   Follow AI-generated recommendations for upgrading infrastructure.
+1. **Authenticate**: User logs in with email and OTP verification (2FA).
+2. **Discover**: User inputs a domain → system maps assets (subdomains, IPs, services).
+3. **Configure**: User sets business context (criticality, SLA).
+4. **Audit**: Run Soft Scan or Deep Scan.
+5. **Analyze**: View PQC readiness score, inspect cryptographic inventory, download CBOM report.
+6. **Remediate**: Follow AI-generated recommendations for upgrading infrastructure.
 
 ---
 
-## 🛠️ Technology Stack
+## 🛠️ Tech Stack
 
-### Frontend
-- **Framework**: React.js (Vite)
-- **Routing**: React Router DOM
-- **State Management**: React Hooks (`useState`, `useEffect`, `useContext`)
-- **Icons**: Lucide React
+### Frontend Core
+| Technology | Purpose |
+|---|---|
+| **React.js (Vite)** | Core UI framework and build tool |
+| **React Router DOM** | Client-side routing |
+| **React Hooks** | State management (`useState`, `useEffect`, `useContext`) |
 
 ### Styling & UI
-- **CSS Framework**: Tailwind CSS
-- **Animations**: Framer Motion / Tailwind Animate
-- **Design System**: Custom Industrial / Cyberpunk UI
+| Technology | Purpose |
+|---|---|
+| **Tailwind CSS** | Utility-first CSS framework |
+| **Framer Motion** | Animations and transitions |
+| **Lucide React** | Iconography |
 
 ### API & Data Handling
-- **HTTP Client**: Axios (with JWT interceptors)
-- **Visualization**: Chart.js / Recharts
+| Technology | Purpose |
+|---|---|
+| **Axios** | HTTP client (with JWT interceptors) |
+| **Chart.js / Recharts** | Data visualization |
 
 ---
 
 ## 📂 Project Structure
 
-    frontend-pnb/
-    ├── public/              # Static assets and branding
-    ├── src/
-    │   ├── assets/          # Images and global styles
-    │   ├── components/      # Reusable UI components
-    │   ├── layouts/         # Layout wrappers (Auth, Dashboard)
-    │   ├── pages/           # Views (Scan, History, Results, Chat)
-    │   ├── services/        # API configuration (Axios)
-    │   ├── utils/           # Helpers (CIA scoring, formatters)
-    │   └── App.jsx          # Root component & protected routes
-    ├── tailwind.config.js   # Theme configuration
-    └── package.json         # Dependencies
+```text
+frontend-pnb/
+│
+├── public/              # Static assets and branding
+├── src/
+│   ├── assets/          # Images and global styles
+│   ├── components/      # Reusable UI components
+│   ├── layouts/         # Layout wrappers (Auth, Dashboard)
+│   ├── pages/           # Views (Scan, History, Results, Chat)
+│   ├── services/        # API configuration (Axios)
+│   ├── utils/           # Helpers (CIA scoring, formatters)
+│   └── App.jsx          # Root component & protected routes
+├── tailwind.config.js   # Theme configuration
+├── vite.config.js       # Vite configuration
+└── package.json         # Dependencies
+```
 
 ---
 
-## ⚙️ Setup & Installation
+## ⚙️ Local Setup (First Time)
 
 ### Prerequisites
 - Node.js (v18+)
-- Running backend server
+- Running Backend Server (`backend-pnb`)
 
 ### Setup
 
-1. **Navigate to the frontend folder**:
+1. **Clone & Navigate**
    ```bash
+   git clone <repository-url>
    cd frontend-pnb
+   ```
 
-2. **Install dependencies**:
+2. **Install Dependencies**
    ```bash
    npm install
+   ```
 
-3. **Configure environment variables**:
+3. **Configure Environment Variables**
+   Create a `.env` file in the root of `frontend-pnb`:
    ```env
-   VITE_API_BASE_URL=http://localhost:5000/api
-
-4. **Start Development Server**:
-   ```bash
-   npm run dev
+   VITE_API_BASE_URL=http://localhost:3000/api
+   ```
+   *(Ensure this matches the port where your backend is running.)*
 
 ---
 
-## 📊 Application Modules
+## 🏃 Running the Application
 
-### Authentication
-- Login with email & password  
-- OTP verification (2FA)  
-- JWT-based session handling  
+### Start Development Server
+```bash
+npm run dev
+```
 
-### Discovery
-- Input domain  
-- Asset mapping (subdomains, IPs, services)  
-
-### Audit Center
-- Run Soft / Deep scans  
-- Monitor scan progress  
-
-### Results View
-- TLS/SSL configuration details  
-- Cipher suite analysis  
-- PQC readiness insights  
-
-### CBOM Reports
-- Generate cryptographic inventory  
-- Download PDF reports  
-
-### History Portal
-- View past scans  
-- Analyze trends over time  
-
-### AI Chatbot
-- Ask questions about scans  
-- Get compliance and security insights  
+The application will typically start on `http://localhost:5173`. Open this URL in your browser to access the KavachAI Dashboard.
 
 ---
 
-## 👤 Team Information
+## 📊 Application Modules & Routes
 
-- **Author**: InfiniTech 🚀
+### Authentication (`/login`, `/verify-otp`)
+- Login with email & password.
+- OTP verification (2FA).
+- JWT-based session handling.
+
+### Dashboard (`/dashboard`)
+- High-level overview of infrastructure.
+- Risk distribution and PQC readiness trends.
+
+### Discovery (`/discovery`)
+- Input domain for asset mapping.
+- View discovered subdomains, IPs, and services.
+
+### Audit Center (`/scan`)
+- Configure and run Soft / Deep scans.
+- Monitor scan progress in real-time.
+
+### Results View (`/results/:scanId`)
+- Detailed TLS/SSL configuration details.
+- Cipher suite analysis.
+- PQC readiness insights.
+
+### CBOM Reports (`/cbom`)
+- Generate cryptographic inventory.
+- Download PDF reports.
+
+### History Portal (`/history`)
+- View past scans.
+- Analyze trends over time.
+
+### AI Chatbot (`/chat`)
+- Ask contextual questions about specific scans.
+- Get compliance and security insights directly from the LLM.
+
+---
+
+## 👤 Team
+
+- **Author:** InfiniTech
+- **Event:** PNB Hackathon 2026
