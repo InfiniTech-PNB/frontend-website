@@ -76,7 +76,7 @@ It enables security administrators to monitor infrastructure **Quantum Readiness
 ## 📂 Project Structure
 
 ```text
-frontend-pnb/
+frontend-website/
 │
 ├── public/              # Static assets and branding
 ├── src/
@@ -105,7 +105,7 @@ frontend-pnb/
 1. **Clone & Navigate**
    ```bash
    git clone <repository-url>
-   cd frontend-pnb
+   cd frontend-website
    ```
 
 2. **Install Dependencies**
