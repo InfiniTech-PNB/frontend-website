@@ -81,8 +81,7 @@ const ScanTab = () => {
         if (wsRef.current) wsRef.current.close();
         console.log("Connecting to WebSocket for job: ", jobId);
 
-        const wsUrl = import.meta.env.VITE_CRYPTO_WS_URL || "wss://crypto.mzdev.in/ws/logs";
-        const ws = new WebSocket(`${wsUrl}?jobId=${jobId}`);
+        const ws = new WebSocket(`wss://crypto.mzdev.in/ws/logs?jobId=${jobId}`);
         console.log("WebSocket connected for job: ", jobId);
         wsRef.current = ws;
 
@@ -176,13 +175,13 @@ const ScanTab = () => {
         setLoading(true);
         try {
             const uniqueSelectedAssetIds = [...new Set(selectedAssets)];
-            
+
             let mode = 'per_asset';
             if (uniqueSelectedAssetIds.length > 1) {
                 const selectedMode = await showModeSelection("Multiple assets detected. Select the structure for your Cryptographic Bill of Materials (CBOM).");
                 if (!selectedMode) {
                     setLoading(false);
-                    return; 
+                    return;
                 }
                 mode = selectedMode;
             }
@@ -277,7 +276,7 @@ const ScanTab = () => {
                                     </div>
 
                                     {/* Logs Area */}
-                                    <div 
+                                    <div
                                         ref={scrollRef}
                                         className="h-[400px] overflow-y-auto p-8 font-mono text-sm space-y-2 scrollbar-hide select-none"
                                     >
@@ -291,7 +290,7 @@ const ScanTab = () => {
                                                 const isSystem = log.startsWith('[SYSTEM]');
                                                 const isError = log.startsWith('[ERROR]');
                                                 const isSuccess = log.includes('Complete') || log.includes('found');
-                                                
+
                                                 return (
                                                     <div key={idx} className="flex gap-4 animate-in fade-in duration-300">
                                                         <span className="text-slate-700 shrink-0">{(idx + 1).toString().padStart(3, '0')}</span>
@@ -463,7 +462,7 @@ const ScanTab = () => {
                                                 value={assetContexts[asset._id][item.key]}
                                                 onChange={(e) => updateAssetContext(asset._id, item.key, Number(e.target.value))}
                                                 className={`w-full h-1.5 rounded-lg appearance-none cursor-pointer transition-all ${selectedAssets.includes(asset._id)
-                                                            ? 'accent-blue-600 bg-slate-800'
+                                                    ? 'accent-blue-600 bg-slate-800'
                                                     : 'accent-slate-300 bg-slate-100 opacity-30'
                                                     }`}
                                             />
@@ -491,20 +490,20 @@ const ScanTab = () => {
                             </div>
                             <h3 className="editorial-title text-2xl uppercase mb-4">Confirm Deep Scan</h3>
                             <p className="text-slate-600 font-semibold mb-8">
-                                Deep Scan performs intensive architectural discovery and cryptographic analysis. 
+                                Deep Scan performs intensive architectural discovery and cryptographic analysis.
                                 <span className="block mt-2 text-amber-600 font-black uppercase text-xs tracking-widest">
                                     This process may take 4-5 minutes.
                                 </span>
                                 Would you like to proceed?
                             </p>
                             <div className="flex gap-4 w-full">
-                                <button 
+                                <button
                                     onClick={() => setShowDeepScanModal(false)}
                                     className="flex-1 py-4 bg-slate-100 text-slate-600 rounded-2xl font-black uppercase text-xs tracking-widest hover:bg-slate-200 transition-all"
                                 >
                                     Cancel
                                 </button>
-                                <button 
+                                <button
                                     onClick={executeScan}
                                     className="flex-1 py-4 bg-blue-700 text-white rounded-2xl font-black uppercase text-xs tracking-widest hover:bg-blue-800 transition-all shadow-lg"
                                 >
