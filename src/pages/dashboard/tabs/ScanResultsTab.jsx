@@ -25,8 +25,10 @@ const ScanResultsTab = () => {
     const [activeTechTab, setActiveTechTab] = useState("algorithms");
     const [expandedAssetId, setExpandedAssetId] = useState(null);
     const [expandedProtocolIndex, setExpandedProtocolIndex] = useState(null); // New state for cipher suites
+    const [futureAsset, setFutureAsset] = useState(null); // Look Into The Future simulation state
 
     const [expandedField, setExpandedField] = React.useState(null);
+    const [simulatedCheckedIndices, setSimulatedCheckedIndices] = useState([]);
 
     const toggleField = (field) => {
         setExpandedField(expandedField === field ? null : field);
@@ -184,6 +186,7 @@ const ScanResultsTab = () => {
     }
 
     const [downloading, setDownloading] = useState(false);
+    const [exportFormat, setExportFormat] = useState("pdf");
 
     const handleDownloadPDF = async () => {
         if (!scanId) return;
@@ -211,6 +214,39 @@ const ScanResultsTab = () => {
         } catch (err) {
             console.error("PDF Download failed:", err);
             alert("Failed to generate PDF report. Please try again.");
+        } finally {
+            setDownloading(false);
+        }
+    };
+
+    const handleDownloadExport = async (format) => {
+        if (!scanId) return;
+        setDownloading(true);
+        try {
+            const mode = cbomData?.mode || "aggregate";
+            const response = await API.get(`/cbom/${scanId}/cbom/${format}?mode=${mode}`, {
+                responseType: format === 'json' ? 'json' : 'blob'
+            });
+
+            let blob;
+            if (format === 'json') {
+                blob = new Blob([JSON.stringify(response.data, null, 2)], { type: 'application/json' });
+            } else {
+                blob = new Blob([response.data], { type: format === 'csv' ? 'text/csv' : 'application/pdf' });
+            }
+
+            const url = window.URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.setAttribute('download', `CBOM-${mode}-${scanId.substring(0, 8)}.${format}`);
+            document.body.appendChild(link);
+            link.click();
+
+            link.parentNode.removeChild(link);
+            window.URL.revokeObjectURL(url);
+        } catch (err) {
+            console.error(`${format.toUpperCase()} Download failed:`, err);
+            alert(`Failed to generate ${format.toUpperCase()} report. Please try again.`);
         } finally {
             setDownloading(false);
         }
@@ -401,6 +437,36 @@ const ScanResultsTab = () => {
                                                                 {Math.round(res.pqcReadyScore * 1000)}
                                                             </p>
                                                         </div>
+
+                                                        {/* Look Into the Future Button */}
+                                                        <button
+                                                            onClick={(e) => {
+                                                                e.stopPropagation();
+                                                                const hostName = res.assetId?.host || "Unknown Asset";
+                                                                const checkedStateKey = `sim_${hostName}`;
+                                                                let initialChecked = [];
+                                                                try {
+                                                                    const saved = localStorage.getItem(checkedStateKey);
+                                                                    if (saved) initialChecked = JSON.parse(saved);
+                                                                } catch (err) {}
+                                                                setSimulatedCheckedIndices(initialChecked);
+                                                                setFutureAsset({
+                                                                    host: hostName,
+                                                                    currentScore: Math.round(res.pqcReadyScore * 1000),
+                                                                    pqcKex: matchingPlan?.recommendedPqcKex || "ML-KEM-768",
+                                                                    pqcSig: matchingPlan?.recommendedPqcSignature || "CRYSTALS-Dilithium",
+                                                                    migrationSteps: matchingPlan?.migrationSteps || [
+                                                                        "Deploy hybrid post-quantum key encapsulation (ML-KEM-768/X25519)",
+                                                                        "Update digital signature algorithm to CRYSTALS-Dilithium",
+                                                                        "Enable hybrid trust anchors in intermediate CAs",
+                                                                        "Perform end-to-end cryptographic telemetry audit"
+                                                                    ]
+                                                                });
+                                                            }}
+                                                            className="flex items-center gap-2 px-5 py-3 rounded-2xl text-xs font-black uppercase tracking-widest bg-slate-900 text-orange-400 hover:bg-orange-500 hover:text-white transition-all shadow-md active:scale-95 whitespace-nowrap"
+                                                        >
+                                                            <Zap size={14} className="animate-pulse" /> Look Into Future
+                                                        </button>
 
                                                         {/* ✅ DROPDOWN ONLY FOR SUCCESS */}
                                                         <button
@@ -668,19 +734,42 @@ const ScanResultsTab = () => {
                         ))}
                     </div>
 
-                    {/* Right Side: Export Button */}
-                    <button
-                        onClick={handleDownloadPDF}
-                        disabled={downloading}
-                        className={`flex items-center gap-2 px-6 py-4 rounded-2xl text-xs sm:text-sm font-black uppercase tracking-widest transition-all shadow-sm shrink-0 whitespace-nowrap bg-slate-500/10 text-slate-900 hover:bg-orange-500 active:scale-95 `}
-                    >
-                        {downloading ? (
-                            <SkeletonBlock className="h-4 w-16 bg-white/40 rounded-md" />
-                        ) : (
-                            <Database size={18} />
-                        )}
-                        {downloading ? "Generating..." : "Export PDF"}
-                    </button>
+                    {/* Right Side: Export Options Dropdown & Button */}
+                    <div className="flex items-center gap-3">
+                        <div className="relative">
+                            <select
+                                value={exportFormat}
+                                onChange={(e) => setExportFormat(e.target.value)}
+                                className="bg-slate-800 text-white border border-slate-700 px-6 py-4 pr-10 rounded-2xl text-xs sm:text-sm font-black uppercase tracking-widest focus:ring-2 focus:ring-orange-500 appearance-none cursor-pointer shadow-md"
+                            >
+                                <option value="pdf" className="bg-slate-900 text-white">PDF (Default)</option>
+                                <option value="csv" className="bg-slate-900 text-white">CSV</option>
+                                <option value="json" className="bg-slate-900 text-white">JSON</option>
+                            </select>
+                            <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-4 text-slate-400">
+                                <ChevronDown size={14} />
+                            </div>
+                        </div>
+
+                        <button
+                            onClick={() => {
+                                if (exportFormat === "pdf") {
+                                    handleDownloadPDF();
+                                } else {
+                                    handleDownloadExport(exportFormat);
+                                }
+                            }}
+                            disabled={downloading}
+                            className="flex items-center gap-2 px-6 py-4 rounded-2xl text-xs sm:text-sm font-black uppercase tracking-widest transition-all shadow-sm shrink-0 whitespace-nowrap bg-orange-500 text-white hover:bg-orange-600 active:scale-95"
+                        >
+                            {downloading ? (
+                                <SkeletonBlock className="h-4 w-16 bg-white/40 rounded-md" />
+                            ) : (
+                                <Database size={18} />
+                            )}
+                            {downloading ? "Generating..." : `Export ${exportFormat.toUpperCase()}`}
+                        </button>
+                    </div>
                 </div>
                 <div className="p-8">
                     {/* 1. RENDER TABLE ONLY FOR NON-CERTIFICATE TABS */}
@@ -951,6 +1040,174 @@ const ScanResultsTab = () => {
                     </div>
                 </div>
             </div>
+
+            {/* --- LOOK INTO THE FUTURE MODAL --- */}
+            {futureAsset && (
+                (() => {
+                    const stepsCount = futureAsset.migrationSteps.length;
+                    const checkedStateKey = `sim_${futureAsset.host}`;
+
+                    const handleToggle = (idx) => {
+                        let newChecked;
+                        if (simulatedCheckedIndices.includes(idx)) {
+                            newChecked = simulatedCheckedIndices.filter(i => i !== idx);
+                                        } else {
+                            newChecked = [...simulatedCheckedIndices, idx];
+                        }
+                        setSimulatedCheckedIndices(newChecked);
+                        localStorage.setItem(checkedStateKey, JSON.stringify(newChecked));
+                    };
+
+                    // Compute dynamic simulated score using the planned Hybrid Model
+                    // 1. Exponential growth curve to model realistic returns (diminishing returns)
+                    const totalSteps = stepsCount || 4;
+                    const checkedCount = simulatedCheckedIndices.length;
+                    const baseScore = futureAsset.currentScore;
+                    const scoreDifference = 1000 - baseScore;
+                    
+                    // We use an exponential ratio so first steps have a higher contribution:
+                    // e.g. Ratio = 1 - (1 - stepRate)^checkedCount
+                    // If checkedCount is 0, ratio is 0. If all checked, ratio is 1.
+                    const stepContributionRatio = checkedCount === totalSteps
+                        ? 1
+                        : 1 - Math.pow(1 - (1 / totalSteps) * 1.15, checkedCount);
+                    
+                    let computedScore = baseScore + (scoreDifference * stepContributionRatio);
+
+                    // 2. Stable hostname-seeded noise so scores look organic (identical hosts get identical noise offsets)
+                    let noise = 0;
+                    if (futureAsset.host && checkedCount > 0 && checkedCount < totalSteps) {
+                        let hash = 0;
+                        for (let i = 0; i < futureAsset.host.length; i++) {
+                            hash = futureAsset.host.charCodeAt(i) + ((hash << 5) - hash);
+                        }
+                        // Noise ranges between -12 and +12 points
+                        noise = ((Math.abs(hash) % 24) - 12);
+                        computedScore += noise;
+                    }
+
+                    // Enforce clean upper bounds and make sure all checks guarantee exactly 1000
+                    if (checkedCount === totalSteps) {
+                        computedScore = 1000;
+                    }
+
+                    const simulatedScore = Math.max(baseScore, Math.min(1000, Math.round(computedScore)));
+
+                    return (
+                        <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-md flex items-center justify-center z-[11000] p-4 animate-in fade-in duration-300">
+                            <div className="bg-slate-900 border border-slate-800 text-white rounded-[3rem] shadow-2xl max-w-4xl w-full overflow-hidden animate-in zoom-in-95 duration-200">
+                                {/* Header */}
+                                <div className="p-8 bg-slate-950 border-b border-slate-800 flex justify-between items-center">
+                                    <div>
+                                        <span className="text-[10px] bg-orange-500/10 text-orange-400 border border-orange-500/20 px-3 py-1 rounded-full font-black uppercase tracking-widest">
+                                            Interactive PQC Simulation
+                                        </span>
+                                        <h3 className="text-2xl font-black italic tracking-tight uppercase mt-2 text-slate-100">
+                                            {futureAsset.host}
+                                        </h3>
+                                    </div>
+                                    <button
+                                        onClick={() => setFutureAsset(null)}
+                                        className="text-slate-400 hover:text-white p-2 rounded-full hover:bg-slate-800 transition-colors"
+                                    >
+                                        <XCircle size={28} />
+                                    </button>
+                                </div>
+
+                                {/* Body - Two Columns Grid */}
+                                <div className="grid grid-cols-1 md:grid-cols-5 divide-y md:divide-y-0 md:divide-x divide-slate-800 max-h-[75vh] overflow-y-auto">
+                                    {/* Left: Score Comparison & Upgrades Details */}
+                                    <div className="p-8 md:col-span-2 space-y-8 flex flex-col justify-between">
+                                        <div className="space-y-6">
+                                            <div className="text-center bg-slate-950/40 p-8 rounded-[2rem] border border-slate-800/60 space-y-4">
+                                                <span className="text-xs text-slate-500 font-bold uppercase tracking-wider block">Simulated Quantum Score</span>
+                                                <div className="relative inline-block">
+                                                    <span className={`text-6xl font-black tracking-tight transition-all duration-500 block ${simulatedScore === 1000 ? 'text-emerald-400 drop-shadow-[0_0_20px_rgba(52,211,153,0.4)] scale-110' : 'text-orange-400'}`}>
+                                                        {simulatedScore}
+                                                    </span>
+                                                </div>
+                                                <span className={`text-[10px] font-bold block uppercase tracking-widest transition-all duration-300 ${simulatedScore === 1000 ? 'text-emerald-400' : 'text-slate-400'}`}>
+                                                    {simulatedScore === 1000 ? 'Fully Post-Quantum Safe' : 'Simulation in Progress'}
+                                                </span>
+                                            </div>
+
+                                            <div className="space-y-4">
+                                                <h4 className="text-xs uppercase font-black text-slate-500 tracking-widest flex items-center gap-2">
+                                                    <Cpu size={14} className="text-orange-500" /> Target Crypto Upgrades
+                                                </h4>
+                                                <div className="space-y-3">
+                                                    <div className="bg-slate-950/30 p-4 rounded-xl border border-slate-800">
+                                                        <span className="text-[10px] text-slate-500 font-bold uppercase block mb-1">Key Encapsulation (KEX)</span>
+                                                        <span className="font-mono text-xs font-black text-emerald-400">{futureAsset.pqcKex}</span>
+                                                    </div>
+                                                    <div className="bg-slate-950/30 p-4 rounded-xl border border-slate-800">
+                                                        <span className="text-[10px] text-slate-500 font-bold uppercase block mb-1">Digital Signature</span>
+                                                        <span className="font-mono text-xs font-black text-emerald-400">{futureAsset.pqcSig}</span>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <div className="text-[10px] text-slate-500 leading-normal uppercase">
+                                            ℹ️ Toggling checklist items simulates active deployment and provides real-time model re-scoring.
+                                        </div>
+                                    </div>
+
+                                    {/* Right: Migration Checklist with Action Items */}
+                                    <div className="p-8 md:col-span-3 space-y-6">
+                                        <h4 className="text-xs uppercase font-black text-slate-400 tracking-widest flex items-center gap-2">
+                                            <CheckCircle2 size={14} className="text-orange-500" /> Deployment Action Items
+                                        </h4>
+                                        <div className="space-y-3">
+                                            {futureAsset.migrationSteps.map((step, idx) => {
+                                                const isChecked = simulatedCheckedIndices.includes(idx);
+                                                return (
+                                                    <div
+                                                        key={idx}
+                                                        onClick={() => handleToggle(idx)}
+                                                        className={`flex gap-4 items-center p-5 rounded-2xl border transition-all duration-300 cursor-pointer select-none ${isChecked ? 'bg-emerald-500/10 border-emerald-500/30 text-slate-100 shadow-md translate-x-1' : 'bg-slate-950/20 border-slate-800/40 text-slate-400 hover:border-slate-700'}`}
+                                                    >
+                                                        {/* Animated Custom Checkbox */}
+                                                        <div className={`w-6 h-6 rounded-xl flex items-center justify-center border transition-all duration-300 ${isChecked ? 'bg-emerald-500 border-emerald-400 scale-110 rotate-[360deg]' : 'bg-slate-900 border-slate-700'}`}>
+                                                            {isChecked && (
+                                                                <span className="text-slate-950 font-black text-sm animate-in zoom-in duration-300">
+                                                                    ✓
+                                                                </span>
+                                                            )}
+                                                        </div>
+                                                        <p className={`text-xs sm:text-sm font-black leading-snug transition-all duration-300 ${isChecked ? 'line-through opacity-70' : ''}`}>
+                                                            {step}
+                                                        </p>
+                                                    </div>
+                                                );
+                                            })}
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* Footer */}
+                                <div className="p-8 bg-slate-950 border-t border-slate-800 flex justify-end gap-3">
+                                    <button
+                                        onClick={() => {
+                                            setSimulatedCheckedIndices([]);
+                                            localStorage.removeItem(checkedStateKey);
+                                        }}
+                                        className="px-6 py-4 rounded-2xl bg-slate-900 border border-slate-800 text-slate-400 hover:text-white font-black uppercase text-xs tracking-widest active:scale-95 transition-all"
+                                    >
+                                        Reset Progress
+                                    </button>
+                                    <button
+                                        onClick={() => setFutureAsset(null)}
+                                        className="px-8 py-4 rounded-2xl bg-orange-500 text-slate-950 font-black uppercase text-xs tracking-widest hover:bg-orange-400 active:scale-95 transition-all shadow-lg"
+                                    >
+                                        Close Simulation
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    );
+                })()
+            )}
         </div>
     );
 };

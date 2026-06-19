@@ -81,7 +81,8 @@ const ScanTab = () => {
         if (wsRef.current) wsRef.current.close();
         console.log("Connecting to WebSocket for job: ", jobId);
 
-        const ws = new WebSocket(`wss://crypto.mzdev.in/ws/logs?jobId=${jobId}`);
+        const wsUrl = import.meta.env.VITE_CRYPTO_WS_URL || "wss://crypto.mzdev.in/ws/logs";
+        const ws = new WebSocket(`${wsUrl}?jobId=${jobId}`);
         console.log("WebSocket connected for job: ", jobId);
         wsRef.current = ws;
 

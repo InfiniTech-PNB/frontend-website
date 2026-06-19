@@ -33,6 +33,7 @@ const CBOMHistoryTab = () => {
     }
 
     const [downloading, setDownloading] = useState(false);
+    const [exportFormat, setExportFormat] = useState("pdf");
 
     const handleDownloadPDF = async () => {
         if (!selectedScan) return;
@@ -60,6 +61,39 @@ const CBOMHistoryTab = () => {
         } catch (err) {
             console.error("PDF Download failed:", err);
             alert("Failed to generate PDF report. Please try again.");
+        } finally {
+            setDownloading(false);
+        }
+    };
+
+    const handleDownloadExport = async (format) => {
+        if (!selectedScan) return;
+        setDownloading(true);
+        try {
+            const mode = cbomData?.mode || "aggregate";
+            const response = await API.get(`/cbom/${selectedScan}/cbom/${format}?mode=${mode}`, {
+                responseType: format === 'json' ? 'json' : 'blob'
+            });
+
+            let blob;
+            if (format === 'json') {
+                blob = new Blob([JSON.stringify(response.data, null, 2)], { type: 'application/json' });
+            } else {
+                blob = new Blob([response.data], { type: format === 'csv' ? 'text/csv' : 'application/pdf' });
+            }
+
+            const url = window.URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.setAttribute('download', `CBOM-${mode}-${selectedScan.substring(0, 8)}.${format}`);
+            document.body.appendChild(link);
+            link.click();
+
+            link.parentNode.removeChild(link);
+            window.URL.revokeObjectURL(url);
+        } catch (err) {
+            console.error(`${format.toUpperCase()} Download failed:`, err);
+            alert(`Failed to generate ${format.toUpperCase()} report. Please try again.`);
         } finally {
             setDownloading(false);
         }
@@ -269,22 +303,46 @@ const CBOMHistoryTab = () => {
                             ))}
                         </div>
 
-                        <button
-                            onClick={handleDownloadPDF}
-                            disabled={!selectedScan || downloading}
-                            className={`flex items-center gap-2 px-6 py-4 rounded-2xl text-xs sm:text-sm font-black uppercase tracking-widest transition-all shadow-sm shrink-0 whitespace-nowrap
-                                    ${!selectedScan
-                                    ? 'bg-white/10 text-slate-900 cursor-not-allowed'
-                                    : 'bg-slate-900/10 text-slate-900 hover:bg-orange-500 active:scale-95'
-                                }`}
-                        >
-                            {downloading ? (
-                                <SkeletonBlock className="h-4 w-16 bg-white/40 rounded-md" />
-                            ) : (
-                                <Database size={18} />
-                            )}
-                            {downloading ? "Generating..." : "Export PDF"}
-                        </button>
+                        {/* Right Side: Export Options Dropdown & Button */}
+                        <div className="flex items-center gap-3">
+                            <div className="relative">
+                                <select
+                                    value={exportFormat}
+                                    onChange={(e) => setExportFormat(e.target.value)}
+                                    className="bg-slate-800 text-white border border-slate-700 px-6 py-4 pr-10 rounded-2xl text-xs sm:text-sm font-black uppercase tracking-widest focus:ring-2 focus:ring-orange-500 appearance-none cursor-pointer shadow-md"
+                                >
+                                    <option value="pdf" className="bg-slate-900 text-white">PDF (Default)</option>
+                                    <option value="csv" className="bg-slate-900 text-white">CSV</option>
+                                    <option value="json" className="bg-slate-900 text-white">JSON</option>
+                                </select>
+                                <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-4 text-slate-400">
+                                    <ChevronDown size={14} />
+                                </div>
+                            </div>
+
+                            <button
+                                onClick={() => {
+                                    if (exportFormat === "pdf") {
+                                        handleDownloadPDF();
+                                    } else {
+                                        handleDownloadExport(exportFormat);
+                                    }
+                                }}
+                                disabled={!selectedScan || downloading}
+                                className={`flex items-center gap-2 px-6 py-4 rounded-2xl text-xs sm:text-sm font-black uppercase tracking-widest transition-all shadow-sm shrink-0 whitespace-nowrap active:scale-95
+                                        ${!selectedScan
+                                        ? 'bg-orange-500/50 text-white cursor-not-allowed'
+                                        : 'bg-orange-500 text-white hover:bg-orange-600'
+                                    }`}
+                            >
+                                {downloading ? (
+                                    <SkeletonBlock className="h-4 w-16 bg-white/40 rounded-md" />
+                                ) : (
+                                    <Database size={18} />
+                                )}
+                                {downloading ? "Generating..." : `Export ${exportFormat.toUpperCase()}`}
+                            </button>
+                        </div>
                     </div>
                     <div className="p-8">
                         {/* 1. RENDER TABLE ONLY FOR NON-CERTIFICATE TABS */}
