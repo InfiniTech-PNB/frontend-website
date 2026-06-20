@@ -207,7 +207,7 @@ const AssetInventoryTab = () => {
                         </h3>
                         <button
                             onClick={() => setShowInventoryGraph(prev => !prev)}
-                            className="flex items-center gap-2 text-xs font-black uppercase text-slate-500 hover:text-blue-600 dark:text-slate-400 dark:hover:text-blue-400 transition-colors cursor-pointer"
+                            className={`flex items-center gap-2 text-xs font-black uppercase transition-colors cursor-pointer px-4 py-2 rounded-3xl bg-orange-500 text-white shadow-xl hover:bg-orange-600`}
                         >
                             {showInventoryGraph ? "Hide Graph" : "Show Graph"}
                         </button>
@@ -220,6 +220,9 @@ const AssetInventoryTab = () => {
                                 domainInput={domains.find(d => d._id === selectedDomain)?.domainName || ''}
                                 selectedAssets={expandedAssetId ? [expandedAssetId] : []}
                                 onToggleSelectAsset={(id) => toggleAssetExpansion(id)}
+                                initialZoom={0.15}
+                                compactControls={true}
+                                height={300}
                             />
                         </div>
                     )}

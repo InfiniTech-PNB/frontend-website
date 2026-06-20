@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState, useMemo } from 'react';
 import { Maximize2, Play, Pause, Info, Check, RefreshCw, ZoomIn, ZoomOut } from 'lucide-react';
 
-const AssetGraph = ({ assets = [], domainInput = "", selectedAssets = [], onToggleSelectAsset }) => {
+const AssetGraph = ({ assets = [], domainInput = "", selectedAssets = [], onToggleSelectAsset, initialZoom = 0.5, compactControls = false, height = 620 }) => {
     const canvasRef = useRef(null);
     const containerRef = useRef(null);
 
@@ -165,11 +165,12 @@ const AssetGraph = ({ assets = [], domainInput = "", selectedAssets = [], onTogg
             canvas.width = rect.width;
             canvas.height = rect.height;
 
-            // First time auto-centering
-            if (transformRef.current.offsetX === 0 && transformRef.current.offsetY === 0) {
-                transformRef.current.offsetX = rect.width / 2 - (rect.width / 2) * transformRef.current.zoom;
-                transformRef.current.offsetY = rect.height / 2 - (rect.height / 2) * transformRef.current.zoom;
-            }
+                // First time auto-centering and applying initial zoom
+                if (transformRef.current.offsetX === 0 && transformRef.current.offsetY === 0) {
+                    transformRef.current.zoom = initialZoom;
+                    transformRef.current.offsetX = rect.width / 2 - (rect.width / 2) * transformRef.current.zoom;
+                    transformRef.current.offsetY = rect.height / 2 - (rect.height / 2) * transformRef.current.zoom;
+                }
         };
 
         resizeCanvas();
@@ -763,7 +764,7 @@ const AssetGraph = ({ assets = [], domainInput = "", selectedAssets = [], onTogg
     };
 
     return (
-        <div ref={containerRef} className="relative w-full h-[620px] bg-slate-950 dark:bg-slate-950/70 border border-slate-900 rounded-[2.5rem] overflow-hidden shadow-2xl">
+        <div ref={containerRef} style={{ height: `${height}px` }} className="relative w-full bg-slate-950 dark:bg-slate-950/70 border border-slate-900 rounded-[2.5rem] overflow-hidden shadow-2xl">
             {/* Canvas Element */}
             <canvas
                 ref={canvasRef}
@@ -828,45 +829,51 @@ const AssetGraph = ({ assets = [], domainInput = "", selectedAssets = [], onTogg
 
             {/* Float Controls Layer */}
             <div className="absolute bottom-6 left-6 right-6 flex justify-between items-center pointer-events-none">
-                {/* Left side details */}
-                <div className="flex flex-col gap-2 p-4 rounded-2xl bg-slate-900/90 dark:bg-slate-900/70 backdrop-blur-md border border-slate-800 shadow-xl pointer-events-auto">
-                    <div className="flex items-center gap-4">
+                {/* Left side legend (always visible) */}
+                <div className="flex flex-col gap-2 p-3 rounded-2xl bg-slate-900/90 dark:bg-slate-900/70 backdrop-blur-md border border-slate-800 shadow-xl pointer-events-auto text-[10px] font-black text-slate-400 uppercase tracking-wider">
+                    <div className="flex items-center gap-3">
                         <div className="flex items-center gap-1.5">
                             <span className="w-2.5 h-2.5 rounded-full bg-blue-600" />
-                            <span className="text-[10px] font-black text-slate-400 uppercase tracking-wider">Root Domain</span>
+                            <span>Root Domain</span>
                         </div>
                         <div className="flex items-center gap-1.5">
                             <span className="w-2.5 h-2.5 rounded-full bg-blue-500" />
-                            <span className="text-[10px] font-black text-slate-400 uppercase tracking-wider">Asset Node</span>
+                            <span>Asset Node</span>
                         </div>
                         <div className="flex items-center gap-1.5">
                             <span className="w-2.5 h-2.5 rounded-full bg-red-500" />
-                            <span className="text-[10px] font-black text-slate-400 uppercase tracking-wider">Selected</span>
+                            <span>Selected</span>
                         </div>
                         <div className="flex items-center gap-1.5">
                             <span className="w-2.5 h-2.5 rounded-full bg-slate-600" />
-                            <span className="text-[10px] font-black text-slate-400 uppercase tracking-wider">Structural Node</span>
+                            <span>Structural Node</span>
                         </div>
                     </div>
                 </div>
 
                 {/* Right side buttons */}
                 <div className="flex gap-2.5 pointer-events-auto">
-                    <button
-                        onClick={handleSelectAll}
-                        title="Toggle select all assets"
-                        className="p-3 bg-slate-900/90 dark:bg-slate-900/70 backdrop-blur-md border border-slate-800 text-slate-200 hover:text-white rounded-xl shadow-xl hover:bg-slate-800/90 transition-all font-black text-[10px] uppercase tracking-wider flex items-center gap-2"
-                    >
-                        <Check size={14} className="text-blue-500" />
-                        Select All ({selectedAssets.length})
-                    </button>
-                    <button
-                        onClick={() => setPhysicsEnabled(!physicsEnabled)}
-                        title={physicsEnabled ? "Pause simulation layout" : "Start simulation layout"}
-                        className="p-3 bg-slate-900/90 dark:bg-slate-900/70 backdrop-blur-md border border-slate-800 text-slate-200 hover:text-white rounded-xl shadow-xl hover:bg-slate-800/90 transition-all"
-                    >
-                        {physicsEnabled ? <Pause size={14} /> : <Play size={14} />}
-                    </button>
+                    {!compactControls && (
+                        <>
+                            <button
+                                onClick={handleSelectAll}
+                                title="Toggle select all assets"
+                                className="p-3 bg-slate-900/90 dark:bg-slate-900/70 backdrop-blur-md border border-slate-800 text-slate-200 hover:text-white rounded-xl shadow-xl hover:bg-slate-800/90 transition-all font-black text-[10px] uppercase tracking-wider flex items-center gap-2"
+                            >
+                                <Check size={14} className="text-blue-500" />
+                                Select All ({selectedAssets.length})
+                            </button>
+                            <button
+                                onClick={() => setPhysicsEnabled(!physicsEnabled)}
+                                title={physicsEnabled ? "Pause simulation layout" : "Start simulation layout"}
+                                className="p-3 bg-slate-900/90 dark:bg-slate-900/70 backdrop-blur-md border border-slate-800 text-slate-200 hover:text-white rounded-xl shadow-xl hover:bg-slate-800/90 transition-all"
+                            >
+                                {physicsEnabled ? <Pause size={14} /> : <Play size={14} />}
+                            </button>
+                        </>
+                    )}
+
+                    {/* Always show only zoom controls when compact, otherwise show full set */}
                     <button
                         onClick={handleZoomIn}
                         title="Zoom In"
@@ -881,13 +888,16 @@ const AssetGraph = ({ assets = [], domainInput = "", selectedAssets = [], onTogg
                     >
                         <ZoomOut size={14} />
                     </button>
-                    <button
-                        onClick={handleRecenter}
-                        title="Recenter and auto-fit graph"
-                        className="p-3 bg-slate-900/90 dark:bg-slate-900/70 backdrop-blur-md border border-slate-800 text-slate-200 hover:text-white rounded-xl shadow-xl hover:bg-slate-800/90 transition-all cursor-pointer"
-                    >
-                        <Maximize2 size={14} />
-                    </button>
+
+                    {!compactControls && (
+                        <button
+                            onClick={handleRecenter}
+                            title="Recenter and auto-fit graph"
+                            className="p-3 bg-slate-900/90 dark:bg-slate-900/70 backdrop-blur-md border border-slate-800 text-slate-200 hover:text-white rounded-xl shadow-xl hover:bg-slate-800/90 transition-all cursor-pointer"
+                        >
+                            <Maximize2 size={14} />
+                        </button>
+                    )}
                 </div>
             </div>
 
