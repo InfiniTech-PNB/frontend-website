@@ -2,29 +2,86 @@ import React, { useState, useEffect, useRef } from 'react';
 import {
     Globe, Target, ShieldAlert, Zap,
     CheckCircle2, Hash, Settings2, Shield, Server,
-    Activity, Cpu, Lock, Info
+    Activity, Cpu, Lock, Info, Network, ArrowRight
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import API from "../../../services/api";
 import { useFeedback } from '../../../context/FeedbackContext';
 import SkeletonBlock from '../../../components/ui/SkeletonBlock';
+import AssetGraph from '../../../components/AssetGraph';
 
 const ScanTab = () => {
     const navigate = useNavigate();
-    const [step, setStep] = useState(1);
-    const [domainInput, setDomainInput] = useState("");
-    const [assets, setAssets] = useState([]);
+    
+    // Lazy State Initializers from sessionStorage
+    const [assets, setAssets] = useState(() => {
+        try {
+            const saved = sessionStorage.getItem('scantab_assets');
+            return saved ? JSON.parse(saved) : [];
+        } catch {
+            return [];
+        }
+    });
+
+    const [step, setStep] = useState(() => {
+        try {
+            const savedStep = sessionStorage.getItem('scantab_step');
+            const savedAssets = sessionStorage.getItem('scantab_assets');
+            const parsedAssets = savedAssets ? JSON.parse(savedAssets) : [];
+            if (parsedAssets.length > 0 && savedStep) {
+                return Number(savedStep);
+            }
+            return 1;
+        } catch {
+            return 1;
+        }
+    });
+
+    const [domainInput, setDomainInput] = useState(() => {
+        return sessionStorage.getItem('scantab_domainInput') || "";
+    });
+
+    const [selectedAssets, setSelectedAssets] = useState(() => {
+        try {
+            const saved = sessionStorage.getItem('scantab_selectedAssets');
+            return saved ? JSON.parse(saved) : [];
+        } catch {
+            return [];
+        }
+    });
+
+    const [scanType, setScanType] = useState(() => {
+        return sessionStorage.getItem('scantab_scanType') || "soft";
+    });
+
+    const [showInventoryGraph, setShowInventoryGraph] = useState(() => {
+        const saved = sessionStorage.getItem('scantab_showInventoryGraph');
+        return saved !== 'false'; // default true
+    });
+
+    const [currentDomainId, setCurrentDomainId] = useState(() => {
+        return sessionStorage.getItem('scantab_currentDomainId') || null;
+    });
+
+    const [jobId, setJobId] = useState(() => {
+        return sessionStorage.getItem('scantab_jobId') || null;
+    });
+
+    const [assetContexts, setAssetContexts] = useState(() => {
+        try {
+            const saved = sessionStorage.getItem('scantab_assetContexts');
+            return saved ? JSON.parse(saved) : {};
+        } catch {
+            return {};
+        }
+    });
+
     const [loading, setLoading] = useState(false);
     const { showModeSelection } = useFeedback();
-
-    const [selectedAssets, setSelectedAssets] = useState([]);
-    const [scanType, setScanType] = useState("soft");
     const [showDeepScanModal, setShowDeepScanModal] = useState(false);
 
     // Async Discovery & WebSocket State
-    const [jobId, setJobId] = useState(null);
     const [logs, setLogs] = useState([]);
-    const [currentDomainId, setCurrentDomainId] = useState(null);
     const scrollRef = useRef(null);
     const wsRef = useRef(null);
 
@@ -32,10 +89,59 @@ const ScanTab = () => {
     const [expandedAssetId, setExpandedAssetId] = useState(null);
     const [assetServices, setAssetServices] = useState({});
     const [loadingServices, setLoadingServices] = useState(false);
-
-    // Business Context State
-    const [assetContexts, setAssetContexts] = useState({});
     const [searchTerm, setSearchTerm] = useState("");
+
+    // Reset discovery flow and clear storage
+    const handleReset = () => {
+        setStep(1);
+        setDomainInput("");
+        setAssets([]);
+        setSelectedAssets([]);
+        setCurrentDomainId(null);
+        setJobId(null);
+        setAssetContexts({});
+        setLogs([]);
+        sessionStorage.clear();
+    };
+
+    // Save states to sessionStorage when updated
+    useEffect(() => {
+        sessionStorage.setItem('scantab_step', step.toString());
+    }, [step]);
+
+    useEffect(() => {
+        sessionStorage.setItem('scantab_domainInput', domainInput);
+    }, [domainInput]);
+
+    useEffect(() => {
+        sessionStorage.setItem('scantab_assets', JSON.stringify(assets));
+    }, [assets]);
+
+    useEffect(() => {
+        sessionStorage.setItem('scantab_selectedAssets', JSON.stringify(selectedAssets));
+    }, [selectedAssets]);
+
+    useEffect(() => {
+        sessionStorage.setItem('scantab_scanType', scanType);
+    }, [scanType]);
+
+    useEffect(() => {
+        sessionStorage.setItem('scantab_showInventoryGraph', showInventoryGraph.toString());
+    }, [showInventoryGraph]);
+
+    useEffect(() => {
+        if (currentDomainId) sessionStorage.setItem('scantab_currentDomainId', currentDomainId);
+        else sessionStorage.removeItem('scantab_currentDomainId');
+    }, [currentDomainId]);
+
+    useEffect(() => {
+        if (jobId) sessionStorage.setItem('scantab_jobId', jobId);
+        else sessionStorage.removeItem('scantab_jobId');
+    }, [jobId]);
+
+    useEffect(() => {
+        sessionStorage.setItem('scantab_assetContexts', JSON.stringify(assetContexts));
+    }, [assetContexts]);
 
     // Auto-scroll logs
     useEffect(() => {
@@ -51,9 +157,12 @@ const ScanTab = () => {
         };
     }, []);
 
-    const fetchAssets = async (domainId) => {
+    const fetchAssets = async (domainId, currentJobId) => {
         try {
-            const assetsRes = await API.get(`/asset-discovery/${domainId}/assets`);
+            const url = currentJobId 
+                ? `/asset-discovery/${domainId}/assets?jobId=${currentJobId}` 
+                : `/asset-discovery/${domainId}/assets`;
+            const assetsRes = await API.get(url);
             const fetchedAssets = assetsRes.data.assets;
             setAssets(fetchedAssets);
 
@@ -99,7 +208,7 @@ const ScanTab = () => {
                 console.log("Discovery Complete for job: ", jobId);
                 setLogs(prev => [...prev, "[SYSTEM] Task finished. Syncing inventory..."]);
                 setTimeout(() => {
-                    fetchAssets(domainId);
+                    fetchAssets(domainId, jobId);
                     ws.close();
                 }, 1500);
             }
@@ -334,8 +443,75 @@ const ScanTab = () => {
                         </div>
                     )}
                 </div>
+            ) : step === 2 ? (
+                <div className="flex flex-col gap-6 max-w-7xl mx-auto w-full">
+                    {/* Graph Control Bar */}
+                    <div className="editorial-shell p-6 rounded-[2rem] flex flex-col md:flex-row justify-between items-center gap-6">
+                        <div className="flex items-center gap-4">
+                            <div className="p-3 bg-blue-50 dark:bg-blue-950/30 rounded-2xl text-blue-700 dark:text-blue-400">
+                                <Network size={24} />
+                            </div>
+                            <div>
+                                <h3 className="editorial-title uppercase text-base sm:text-lg leading-none">Topology Graph</h3>
+                                <p className="text-xs sm:text-sm font-bold text-slate-500 uppercase tracking-[0.2em] mt-1">
+                                    Discovered network tree for <span className="text-blue-700 font-extrabold">{domainInput}</span>
+                                </p>
+                            </div>
+                        </div>
+
+                        <div className="flex items-center gap-4">
+                            <div className="text-right hidden sm:block">
+                                <p className="text-xs font-black uppercase text-slate-400 tracking-wider">Inventory Status</p>
+                                <p className="text-sm font-black text-slate-700 dark:text-slate-200">
+                                    {selectedAssets.length} of {assets.length} Selected
+                                </p>
+                            </div>
+                            <button
+                                onClick={handleReset}
+                                className="editorial-button editorial-button-ghost px-5 py-4 cursor-pointer hover:scale-[1.03] active:scale-[0.98] transition-all duration-300"
+                            >
+                                New Scan
+                            </button>
+                            <button
+                                onClick={() => setStep(3)}
+                                className="editorial-button editorial-button-primary px-6 py-4 flex items-center gap-3 cursor-pointer hover:scale-[1.03] hover:shadow-lg hover:brightness-110 active:scale-[0.98] transition-all duration-300"
+                            >
+                                Go to Asset Inventory
+                                <ArrowRight size={14} />
+                            </button>
+                        </div>
+                    </div>
+
+                    {/* Interactive Force Graph */}
+                    <AssetGraph
+                        assets={assets}
+                        domainInput={domainInput}
+                        selectedAssets={selectedAssets}
+                        onToggleSelectAsset={(id) => setSelectedAssets(prev =>
+                            prev.includes(id) ? prev.filter(a => a !== id) : [...prev, id]
+                        )}
+                    />
+                </div>
             ) : (
                 <div className="flex flex-col gap-8">
+                    {/* Back to Graph / New Discovery Options */}
+                    <div className="flex justify-between items-center px-4">
+                        <div className="flex items-center gap-4">
+                            <button
+                                onClick={() => setStep(2)}
+                                className="flex items-center gap-2 text-xs font-black uppercase text-slate-500 hover:text-blue-600 dark:text-slate-400 dark:hover:text-blue-400 transition-colors cursor-pointer"
+                            >
+                                ← Back to Network Topology Graph
+                            </button>
+                            <span className="text-slate-300 dark:text-slate-700">|</span>
+                            <button
+                                onClick={handleReset}
+                                className="flex items-center gap-2 text-xs font-black uppercase text-slate-500 hover:text-red-500 transition-colors cursor-pointer"
+                            >
+                                New Discovery
+                            </button>
+                        </div>
+                    </div>
                     {/* Control Bar */}
                     <div className="editorial-shell p-6 rounded-[2rem] flex flex-col md:flex-row justify-between items-center gap-6">
                         <div className="flex items-center gap-4">

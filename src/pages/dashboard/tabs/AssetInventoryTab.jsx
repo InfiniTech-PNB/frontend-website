@@ -6,21 +6,68 @@ import {
 import { useNavigate } from 'react-router-dom';
 import API from "../../../services/api";
 import SkeletonBlock from '../../../components/ui/SkeletonBlock';
+import AssetGraph from '../../../components/AssetGraph';
 
 const AssetInventoryTab = () => {
     const navigate = useNavigate();
 
     // Selection & Data States
     const [domains, setDomains] = useState([]);
-    const [selectedDomain, setSelectedDomain] = useState("");
-    const [assets, setAssets] = useState([]);
+    
+    const [selectedDomain, setSelectedDomain] = useState(() => {
+        return sessionStorage.getItem('inventory_selectedDomain') || "";
+    });
+
+    const [assets, setAssets] = useState(() => {
+        try {
+            const saved = sessionStorage.getItem('inventory_assets');
+            return saved ? JSON.parse(saved) : [];
+        } catch {
+            return [];
+        }
+    });
+
     const [loading, setLoading] = useState(false);
     const [searchTerm, setSearchTerm] = useState("");
     const [scanningAssetId, setScanningAssetId] = useState(null);
 
     // UI Interaction States
-    const [expandedAssetId, setExpandedAssetId] = useState(null);
+    const [expandedAssetId, setExpandedAssetId] = useState(() => {
+        return sessionStorage.getItem('inventory_expandedAssetId') || null;
+    });
+
+    const [showInventoryGraph, setShowInventoryGraph] = useState(false);
+
     const [detailedServices, setDetailedServices] = useState({}); // Stores results of the second route
+
+    // Sync state variables to sessionStorage
+    useEffect(() => {
+        sessionStorage.setItem('inventory_selectedDomain', selectedDomain);
+    }, [selectedDomain]);
+
+    useEffect(() => {
+        sessionStorage.setItem('inventory_assets', JSON.stringify(assets));
+    }, [assets]);
+
+    useEffect(() => {
+        if (expandedAssetId) sessionStorage.setItem('inventory_expandedAssetId', expandedAssetId);
+        else sessionStorage.removeItem('inventory_expandedAssetId');
+    }, [expandedAssetId]);
+
+    // Fetch expanded asset services if restored from refresh
+    useEffect(() => {
+        if (expandedAssetId && !detailedServices[expandedAssetId]) {
+            const fetchServices = async () => {
+                try {
+                    const res = await API.get(`/services/${expandedAssetId}/services`);
+                    setDetailedServices(prev => ({ ...prev, [expandedAssetId]: res.data }));
+                } catch (err) {
+                    console.error("Error fetching deep service details:", err);
+                }
+            };
+            fetchServices();
+        }
+    }, [expandedAssetId]);
 
     // 1. Initial Load: Fetch Domains
     useEffect(() => {
@@ -36,6 +83,7 @@ const AssetInventoryTab = () => {
     // 2. Fetch Assets when Domain changes (Route 1)
     const handleDomainChange = async (domainId) => {
         setSelectedDomain(domainId);
+        setShowInventoryGraph(false);
         if (!domainId) {
             setAssets([]);
             return;
@@ -150,6 +198,33 @@ const AssetInventoryTab = () => {
                     </div>
                 </div>
             </div>
+
+            {selectedDomain && assets.length > 0 && (
+                <div className="space-y-6 animate-in fade-in duration-500">
+                    <div className="flex justify-between items-center px-4">
+                        <h3 className="text-lg font-black text-slate-900 uppercase tracking-tight italic flex items-center gap-2">
+                            <Network size={20} className="text-blue-500" /> Topology Graph
+                        </h3>
+                        <button
+                            onClick={() => setShowInventoryGraph(prev => !prev)}
+                            className="flex items-center gap-2 text-xs font-black uppercase text-slate-500 hover:text-blue-600 dark:text-slate-400 dark:hover:text-blue-400 transition-colors cursor-pointer"
+                        >
+                            {showInventoryGraph ? "Hide Graph" : "Show Graph"}
+                        </button>
+                    </div>
+
+                    {showInventoryGraph && (
+                        <div className="animate-in fade-in slide-in-from-top-4 duration-500">
+                            <AssetGraph
+                                assets={assets}
+                                domainInput={domains.find(d => d._id === selectedDomain)?.domainName || ''}
+                                selectedAssets={expandedAssetId ? [expandedAssetId] : []}
+                                onToggleSelectAsset={(id) => toggleAssetExpansion(id)}
+                            />
+                        </div>
+                    )}
+                </div>
+            )}
 
             {/* --- DATA AREA --- */}
             {loading ? (
