@@ -220,9 +220,9 @@ const AssetInventoryTab = () => {
                                 domainInput={domains.find(d => d._id === selectedDomain)?.domainName || ''}
                                 selectedAssets={expandedAssetId ? [expandedAssetId] : []}
                                 onToggleSelectAsset={(id) => toggleAssetExpansion(id)}
-                                initialZoom={0.15}
+                                initialZoom={0.08}
                                 compactControls={true}
-                                height={300}
+                                height={420}
                             />
                         </div>
                     )}

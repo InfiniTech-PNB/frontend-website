@@ -1,7 +1,8 @@
 import React, { useEffect, useRef, useState, useMemo } from 'react';
 import { Maximize2, Play, Pause, Info, Check, RefreshCw, ZoomIn, ZoomOut } from 'lucide-react';
 
-const AssetGraph = ({ assets = [], domainInput = "", selectedAssets = [], onToggleSelectAsset, initialZoom = 0.5, compactControls = false, height = 620 }) => {
+// INCREASED DEFAULT HEIGHT HERE (changed height = 620 to height = 780)
+const AssetGraph = ({ assets = [], domainInput = "", selectedAssets = [], onToggleSelectAsset, initialZoom = 0.5, compactControls = false, height = 780 }) => {
     const canvasRef = useRef(null);
     const containerRef = useRef(null);
 
@@ -683,8 +684,6 @@ const AssetGraph = ({ assets = [], domainInput = "", selectedAssets = [], onTogg
         setHoveredNode(null);
     };
 
-
-
     // Auto-fit Graph view to fit container
     const handleRecenter = () => {
         const canvas = canvasRef.current;
@@ -764,7 +763,7 @@ const AssetGraph = ({ assets = [], domainInput = "", selectedAssets = [], onTogg
     };
 
     return (
-        <div ref={containerRef} style={{ height: `${height}px` }} className="relative w-full bg-slate-950 dark:bg-slate-950/70 border border-slate-900 rounded-[2.5rem] overflow-hidden shadow-2xl">
+        <div ref={containerRef} style={{ height: '420px' }} className="relative w-full bg-slate-950 dark:bg-slate-950/70 border border-slate-900 rounded-[2.5rem] overflow-hidden shadow-2xl">
             {/* Canvas Element */}
             <canvas
                 ref={canvasRef}
@@ -863,13 +862,7 @@ const AssetGraph = ({ assets = [], domainInput = "", selectedAssets = [], onTogg
                                 <Check size={14} className="text-blue-500" />
                                 Select All ({selectedAssets.length})
                             </button>
-                            <button
-                                onClick={() => setPhysicsEnabled(!physicsEnabled)}
-                                title={physicsEnabled ? "Pause simulation layout" : "Start simulation layout"}
-                                className="p-3 bg-slate-900/90 dark:bg-slate-900/70 backdrop-blur-md border border-slate-800 text-slate-200 hover:text-white rounded-xl shadow-xl hover:bg-slate-800/90 transition-all"
-                            >
-                                {physicsEnabled ? <Pause size={14} /> : <Play size={14} />}
-                            </button>
+                           
                         </>
                     )}
 

@@ -438,7 +438,7 @@ const ScanResultsTab = () => {
                                                             </p>
                                                         </div>
 
-                                                        {/* Look Into the Future Button */}
+                                                        {/* Look Into the Future Button - NOW STYLED ORANGE */}
                                                         <button
                                                             onClick={(e) => {
                                                                 e.stopPropagation();
@@ -463,7 +463,7 @@ const ScanResultsTab = () => {
                                                                     ]
                                                                 });
                                                             }}
-                                                            className="flex items-center gap-2 px-5 py-3 rounded-2xl text-xs font-black uppercase tracking-widest bg-slate-900 text-orange-400 hover:bg-orange-500 hover:text-white transition-all shadow-md active:scale-95 whitespace-nowrap"
+                                                            className="flex items-center gap-2 px-5 py-3 rounded-2xl text-xs font-black uppercase tracking-widest bg-orange-500 text-white hover:bg-orange-600 transition-all shadow-md active:scale-95 whitespace-nowrap"
                                                         >
                                                             <Zap size={14} className="animate-pulse" /> Look Into Future
                                                         </button>
@@ -1051,47 +1051,41 @@ const ScanResultsTab = () => {
                         let newChecked;
                         if (simulatedCheckedIndices.includes(idx)) {
                             newChecked = simulatedCheckedIndices.filter(i => i !== idx);
-                                        } else {
+                        } else {
                             newChecked = [...simulatedCheckedIndices, idx];
                         }
                         setSimulatedCheckedIndices(newChecked);
                         localStorage.setItem(checkedStateKey, JSON.stringify(newChecked));
                     };
 
-                    // Compute dynamic simulated score using the planned Hybrid Model
-                    // 1. Exponential growth curve to model realistic returns (diminishing returns)
-                    const totalSteps = stepsCount || 4;
-                    const checkedCount = simulatedCheckedIndices.length;
+                    // --- NEW MATHEMATICAL LOGIC: S + (1000 - S) * (1 - e^(-kR)) ---
                     const baseScore = futureAsset.currentScore;
-                    const scoreDifference = 1000 - baseScore;
+                    const checkedCount = simulatedCheckedIndices.length;
                     
-                    // We use an exponential ratio so first steps have a higher contribution:
-                    // e.g. Ratio = 1 - (1 - stepRate)^checkedCount
-                    // If checkedCount is 0, ratio is 0. If all checked, ratio is 1.
-                    const stepContributionRatio = checkedCount === totalSteps
-                        ? 1
-                        : 1 - Math.pow(1 - (1 / totalSteps) * 1.15, checkedCount);
-                    
-                    let computedScore = baseScore + (scoreDifference * stepContributionRatio);
+                    let simulatedScore = baseScore;
+                    let riskReduction = 0;
 
-                    // 2. Stable hostname-seeded noise so scores look organic (identical hosts get identical noise offsets)
-                    let noise = 0;
-                    if (futureAsset.host && checkedCount > 0 && checkedCount < totalSteps) {
+                    if (checkedCount > 0) {
+                        // Generate deterministic K based on specific selection (seed string is derived from sorted checked indices)
+                        const seedStr = futureAsset.host + "_" + [...simulatedCheckedIndices].sort().join(",");
                         let hash = 0;
-                        for (let i = 0; i < futureAsset.host.length; i++) {
-                            hash = futureAsset.host.charCodeAt(i) + ((hash << 5) - hash);
+                        for (let i = 0; i < seedStr.length; i++) {
+                            hash = Math.imul(31, hash) + seedStr.charCodeAt(i) | 0;
                         }
-                        // Noise ranges between -12 and +12 points
-                        noise = ((Math.abs(hash) % 24) - 12);
-                        computedScore += noise;
-                    }
+                        
+                        // Convert hash to a 0-1 float to pick k within U(0.25, 0.45)
+                        const rng = Math.abs(hash) / 2147483647; 
+                        const k = 0.25 + (rng * 0.20); 
 
-                    // Enforce clean upper bounds and make sure all checks guarantee exactly 1000
-                    if (checkedCount === totalSteps) {
-                        computedScore = 1000;
+                        // Apply the exponential growth curve formula
+                        const computedScore = baseScore + (1000 - baseScore) * (1 - Math.exp(-k * checkedCount));
+                        
+                        // Cap strictly below 1000 (max 999) as requested
+                        simulatedScore = Math.min(999, Math.round(computedScore));
+                        
+                        // Calculate Risk Reduction % (Percentage of the gap closed)
+                        riskReduction = Math.round(((simulatedScore - baseScore) / (1000 - baseScore)) * 100);
                     }
-
-                    const simulatedScore = Math.max(baseScore, Math.min(1000, Math.round(computedScore)));
 
                     return (
                         <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-md flex items-center justify-center z-[11000] p-4 animate-in fade-in duration-300">
@@ -1119,16 +1113,30 @@ const ScanResultsTab = () => {
                                     {/* Left: Score Comparison & Upgrades Details */}
                                     <div className="p-8 md:col-span-2 space-y-8 flex flex-col justify-between">
                                         <div className="space-y-6">
-                                            <div className="text-center bg-slate-950/40 p-8 rounded-[2rem] border border-slate-800/60 space-y-4">
-                                                <span className="text-xs text-slate-500 font-bold uppercase tracking-wider block">Simulated Quantum Score</span>
-                                                <div className="relative inline-block">
-                                                    <span className={`text-6xl font-black tracking-tight transition-all duration-500 block ${simulatedScore === 1000 ? 'text-emerald-400 drop-shadow-[0_0_20px_rgba(52,211,153,0.4)] scale-110' : 'text-orange-400'}`}>
-                                                        {simulatedScore}
-                                                    </span>
+                                            
+                                            {/* UI UPDATE: SIDE BY SIDE SCORES + RISK REDUCTION */}
+                                            <div className="space-y-4">
+                                                <div className="grid grid-cols-2 gap-4">
+                                                    <div className="bg-slate-950/40 p-6 rounded-[2rem] border border-slate-800/60 text-center flex flex-col justify-center">
+                                                        <span className="text-[10px] text-slate-500 font-bold uppercase tracking-wider block mb-2">Original Score</span>
+                                                        <span className="text-4xl font-black text-slate-500">{baseScore}</span>
+                                                    </div>
+                                                    <div className="bg-slate-950/60 p-6 rounded-[2rem] border border-orange-500/30 text-center relative overflow-hidden flex flex-col justify-center">
+                                                        <div className="absolute inset-0 bg-orange-500/5" />
+                                                        <span className="relative z-10 text-[10px] text-orange-500 font-bold uppercase tracking-wider block mb-2">Predicted Score</span>
+                                                        <span className="relative z-10 text-5xl font-black text-orange-400 drop-shadow-md transition-all duration-300">{simulatedScore}</span>
+                                                    </div>
                                                 </div>
-                                                <span className={`text-[10px] font-bold block uppercase tracking-widest transition-all duration-300 ${simulatedScore === 1000 ? 'text-emerald-400' : 'text-slate-400'}`}>
-                                                    {simulatedScore === 1000 ? 'Fully Post-Quantum Safe' : 'Simulation in Progress'}
-                                                </span>
+
+                                                {checkedCount > 0 && (
+                                                    <div className="bg-emerald-500/10 border border-emerald-500/20 p-5 rounded-[2rem] text-center flex items-center justify-center gap-3 animate-in fade-in zoom-in duration-300">
+                                                        <Activity size={20} className="text-emerald-400" />
+                                                        <div className="text-left">
+                                                            <span className="text-[10px] text-emerald-500/70 font-bold uppercase tracking-widest block leading-none mb-1">Estimated Risk Reduction</span>
+                                                            <span className="text-xl font-black text-emerald-400 leading-none">{riskReduction}%</span>
+                                                        </div>
+                                                    </div>
+                                                )}
                                             </div>
 
                                             <div className="space-y-4">
